@@ -75,3 +75,7 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 # lint/reports/
+
+.project
+
+.settings/org.eclipse.buildship.core.prefs
