@@ -1,0 +1,50 @@
+{
+  materials: [
+    {
+      name: 'Hamburguer_Mat',
+      parameters: [
+        {
+          baseColor: 'hamburger',
+        },
+        {
+          baseColorTint: [
+            1,
+            1,
+            1,
+            1,
+          ],
+        },
+        {
+          metallic: 0,
+        },
+        {
+          roughness: 1,
+        },
+        {
+          opacity: null,
+        },
+      ],
+      source: 'build/sceneform_sdk/default_materials/obj_material.sfm',
+    },
+  ],
+  model: {
+    attributes: [
+      'Position',
+      'TexCoord',
+      'Orientation',
+    ],
+    collision: {},
+    file: 'models/hamburger.obj',
+    name: 'hamburger',
+    recenter: 'root',
+    scale: 0.26252599999999998,
+  },
+  samplers: [
+    {
+      file: 'models/hamburger.png',
+      name: 'hamburger',
+      pipeline_name: 'hamburger.png',
+    },
+  ],
+  version: '0.54:1',
+}
