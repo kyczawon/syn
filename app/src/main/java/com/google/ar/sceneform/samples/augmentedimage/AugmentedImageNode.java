@@ -18,6 +18,7 @@ package com.google.ar.sceneform.samples.augmentedimage;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -29,6 +30,15 @@ import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.rendering.ViewRenderable;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -58,30 +68,15 @@ public class AugmentedImageNode extends AnchorNode {
   private static CompletableFuture<ModelRenderable> sushi;
   private static CompletableFuture<ModelRenderable> button;
   private static CompletableFuture<ViewRenderable> details;
+    private static CompletableFuture<ViewRenderable> allergens;
 
   private Node currentFood;
 
 
   public AugmentedImageNode(Context context) {
     // Upon construction, start loading the models for the corners of the frame.
-    if (ulCorner == null) {
-      ulCorner =
-          ModelRenderable.builder()
-              .setSource(context, Uri.parse("models/frame_upper_left.sfb"))
-              .build();
-      urCorner =
-          ModelRenderable.builder()
-              .setSource(context, Uri.parse("models/frame_upper_right.sfb"))
-              .build();
-      llCorner =
-          ModelRenderable.builder()
-              .setSource(context, Uri.parse("models/frame_lower_left.sfb"))
-              .build();
-      lrCorner =
-          ModelRenderable.builder()
-              .setSource(context, Uri.parse("models/frame_lower_right.sfb"))
-              .build();
-      hamburger =
+    if (hamburger == null) {
+        hamburger =
           ModelRenderable.builder()
               .setSource(context, Uri.parse("models/hamburger.sfb"))
               .build();
@@ -106,6 +101,11 @@ public class AugmentedImageNode extends AnchorNode {
               ViewRenderable.builder()
                       .setView(context, R.layout.description)
                       .build();
+
+      allergens =
+                ViewRenderable.builder()
+                        .setView(context, R.layout.allergens)
+                        .build();
 }
   }
 
@@ -120,8 +120,8 @@ public class AugmentedImageNode extends AnchorNode {
     this.image = image;
 
     // If any of the models are not loaded, then recurse when all are loaded.
-    if (!ulCorner.isDone() || !urCorner.isDone() || !llCorner.isDone() || !lrCorner.isDone() || !hamburger.isDone()) {
-      CompletableFuture.allOf(ulCorner, urCorner, llCorner, lrCorner, hamburger)
+    if (!hamburger.isDone()) {
+      CompletableFuture.allOf(hamburger)
           .thenAccept((Void aVoid) -> setImage(image))
           .exceptionally(
               throwable -> {
@@ -135,36 +135,6 @@ public class AugmentedImageNode extends AnchorNode {
 
     // Make the 4 corner nodes.
     Vector3 localPosition = new Vector3();
-    Node cornerNode;
-
-    // Upper left corner.
-    localPosition.set(-0.5f * image.getExtentX(), 0.0f, -0.5f * image.getExtentZ());
-    cornerNode = new Node();
-    cornerNode.setParent(this);
-    cornerNode.setLocalPosition(localPosition);
-    cornerNode.setRenderable(ulCorner.getNow(null));
-
-
-    // Upper right corner.
-    localPosition.set(0.5f * image.getExtentX(), 0.0f, -0.5f * image.getExtentZ());
-    cornerNode = new Node();
-    cornerNode.setParent(this);
-    cornerNode.setLocalPosition(localPosition);
-    cornerNode.setRenderable(urCorner.getNow(null));
-
-    // Lower right corner.
-    localPosition.set(0.5f * image.getExtentX(), 0.0f, 0.5f * image.getExtentZ());
-    cornerNode = new Node();
-    cornerNode.setParent(this);
-    cornerNode.setLocalPosition(localPosition);
-    cornerNode.setRenderable(lrCorner.getNow(null));
-
-    // Lower left corner.
-    localPosition.set(-0.5f * image.getExtentX(), 0.0f, 0.5f * image.getExtentZ());
-    cornerNode = new Node();
-    cornerNode.setParent(this);
-    cornerNode.setLocalPosition(localPosition);
-    cornerNode.setRenderable(llCorner.getNow(null));
 
     localPosition.set(0.0f,0.0f,-0.07f);
     Node buttonNode = new Node();
@@ -199,6 +169,14 @@ public class AugmentedImageNode extends AnchorNode {
     detailsNode.setParent(this);
     detailsNode.setLocalPosition(localPosition);
     detailsNode.setLocalScale(new Vector3(0.25f,0.25f,0.25f));
+    detailsNode.setLocalRotation(new Quaternion( 0.383f,0,0, -0.924f));
+
+      localPosition.set(0.9f * image.getExtentX(), 0.0f, 0.0f);
+      Node allergensNode = new Node();
+      allergensNode.setParent(this);
+      allergensNode.setLocalPosition(localPosition);
+      allergensNode.setLocalScale(new Vector3(0.25f,0.25f,0.25f));
+      allergensNode.setLocalRotation(new Quaternion(  0.383f,0,0, -0.924f));
 
     //current food
     localPosition.set(-1f * image.getExtentX(), 0.0f, 0);
@@ -206,19 +184,24 @@ public class AugmentedImageNode extends AnchorNode {
     currentFood.setParent(this);
     currentFood.setLocalPosition(localPosition);
 
+
     buttonNode.setOnTapListener((hitTestResult, motionEvent) -> {
         currentFood.setLocalRotation(new Quaternion(0,1,0,1));
         currentFood.setRenderable(sushi.getNow(null));
         currentFood.setLocalScale(new Vector3(0.25f,0.25f,0.25f));
 
         detailsNode.setRenderable(details.getNow(null));
-        detailsNode.setLocalRotation(new Quaternion( 0.383f,0,0, -0.924f));
 
         TextView text = details.getNow(null).getView().findViewById(R.id.header);
-        text.setText("Sushi Set - special of the chef famous salmon sushi");
+        text.setText(Utils.translations[0]);
 
         TextView calories = details.getNow(null).getView().findViewById(R.id.calories);
         calories.setText("256 Calories");
+
+        allergensNode.setRenderable(allergens.getNow(null));
+
+        TextView allergensTextView = allergens.getNow(null).getView().findViewById(R.id.allergens_header);
+        allergensTextView.setText(Utils.allergens[0]);
     });
 
     buttonNode2.setOnTapListener((hitTestResult, motionEvent) -> {
@@ -227,13 +210,17 @@ public class AugmentedImageNode extends AnchorNode {
         currentFood.setLocalScale(new Vector3(0.070f, 0.070f, 0.070f));
 
         detailsNode.setRenderable(details.getNow(null));
-        detailsNode.setLocalRotation(new Quaternion( 0.383f,0,0, -0.924f));
 
         TextView text = details.getNow(null).getView().findViewById(R.id.header);
-        text.setText("French Fries and bacon and cheddar burger");
+        text.setText(Utils.translations[1]);
 
         TextView calories = details.getNow(null).getView().findViewById(R.id.calories);
         calories.setText("127 Calories");
+
+        allergensNode.setRenderable(allergens.getNow(null));
+
+        TextView allergensTextView = allergens.getNow(null).getView().findViewById(R.id.allergens_header);
+        allergensTextView.setText(Utils.allergens[1]);
     });
 
     buttonNode3.setOnTapListener((hitTestResult, motionEvent) -> {
@@ -241,14 +228,18 @@ public class AugmentedImageNode extends AnchorNode {
         currentFood.setRenderable(pizza.getNow(null));
         currentFood.setLocalScale(new Vector3(0.032f,0.032f,0.032f));
 
-        detailsNode.setRenderable(details.getNow(null));
-        detailsNode.setLocalRotation(new Quaternion( 0.383f,0,0, -0.924f));
-
         TextView text = details.getNow(null).getView().findViewById(R.id.header);
-        text.setText("Peperoni Pizza");
+        text.setText(Utils.translations[2]);
+
+        detailsNode.setRenderable(details.getNow(null));
 
         TextView calories = details.getNow(null).getView().findViewById(R.id.calories);
         calories.setText("347 Calories");
+
+        allergensNode.setRenderable(allergens.getNow(null));
+
+        TextView allergensTextView = allergens.getNow(null).getView().findViewById(R.id.allergens_header);
+        allergensTextView.setText(Utils.allergens[2]);
     });
 
     buttonNode4.setOnTapListener((hitTestResult, motionEvent) -> {
@@ -257,13 +248,18 @@ public class AugmentedImageNode extends AnchorNode {
         currentFood.setLocalScale(new Vector3(0.14f,0.14f,0.14f));
 
         detailsNode.setRenderable(details.getNow(null));
-        detailsNode.setLocalRotation(new Quaternion( 0.383f,0,0, -0.924f));
 
         TextView text = details.getNow(null).getView().findViewById(R.id.header);
-        text.setText("Chief's special rice");
+        text.setText(Utils.translations[3]);
 
         TextView calories = details.getNow(null).getView().findViewById(R.id.calories);
         calories.setText("123 Calories");
+
+        allergensNode.setRenderable(allergens.getNow(null));
+
+        TextView allergensTextView = allergens.getNow(null).getView().findViewById(R.id.allergens_header);
+        allergensTextView.setText(Utils.allergens[3]);
+
     });
   }
 

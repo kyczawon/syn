@@ -16,10 +16,15 @@
 
 package com.google.ar.sceneform.samples.augmentedimage;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.Spinner;
+
 import com.google.ar.core.AugmentedImage;
 import com.google.ar.core.Config;
 import com.google.ar.core.Frame;
@@ -28,9 +33,22 @@ import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.FrameTime;
 import com.google.ar.sceneform.samples.common.helpers.SnackbarHelper;
 import com.google.ar.sceneform.ux.ArFragment;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * This application demonstrates using augmented images to place anchor nodes. app to include image
@@ -55,6 +73,37 @@ public class AugmentedImageActivity extends AppCompatActivity {
     fitToScanView = findViewById(R.id.image_view_fit_to_scan);
 
     arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
+
+    // set the spinner data programmatically, from a string array or list
+
+    // (1) get a reference to the spinner
+        Spinner spinner1 = findViewById(R.id.language_spinner);
+
+    // (3) create an adapter from the list
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                getBaseContext(),
+                android.R.layout.simple_spinner_item,
+                Utils.getLanguages()
+        );
+
+    //adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+    // (4) set the adapter on the spinner
+    spinner1.setAdapter(adapter);
+
+    spinner1.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+      @Override
+      public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+        Utils.setTargetLanguage(Utils.languageCodes.get(position));
+        translateStuff();
+      }
+
+      @Override
+      public void onNothingSelected(AdapterView<?> parentView) {
+        // your code here
+      }
+
+    });
   }
 
   @Override
@@ -70,7 +119,7 @@ public class AugmentedImageActivity extends AppCompatActivity {
    *
    * @param frameTime - time since last frame.
    */
-  private void onUpdateFrame(FrameTime frameTime) {
+  public void onUpdateFrame(FrameTime frameTime) {
     Frame frame = arFragment.getArSceneView().getArFrame();
 
     // If there is no frame or ARCore is not tracking yet, just return.
@@ -83,10 +132,6 @@ public class AugmentedImageActivity extends AppCompatActivity {
     for (AugmentedImage augmentedImage : updatedAugmentedImages) {
       switch (augmentedImage.getTrackingState()) {
         case PAUSED:
-          // When an image is in PAUSED state, but the camera is not PAUSED, it has been detected,
-          // but not yet tracked.
-          String text = "Detected Image " + augmentedImage.getIndex();
-          SnackbarHelper.getInstance().showMessage(this, text);
           break;
 
         case TRACKING:
@@ -107,5 +152,69 @@ public class AugmentedImageActivity extends AppCompatActivity {
           break;
       }
     }
+  }
+
+
+
+  private void translateStuff() {
+
+    AsyncTask<String, Void, String> asyncTask = new AsyncTask<String, Void, String>() {
+      @Override
+      protected String doInBackground(String... input) {
+        String message = "";
+
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .url("https://translation.googleapis.com/language/translate/v2" +
+                        "?q=" + Utils.descriptions[0] +
+                        "&q=" + Utils.descriptions[1] +
+                        "&q=" + Utils.descriptions[2] +
+                        "&q=" + Utils.descriptions[3] +
+                        "&q=" + Utils.allergens[0] +
+                        "&q=" + Utils.allergens[1] +
+                        "&q=" + Utils.allergens[2] +
+                        "&q=" + Utils.allergens[3] +
+                        "&target=" + Utils.targetLanguage +
+                        "&key=" + "AIzaSyBAEGDww4VJ1UmJI2Du296txX3aPEpUO_g")
+                .build();
+        try {
+          Response response = client.newCall(request).execute();
+          assert response.body() != null;
+          JSONObject jmessage = new JSONObject(response.body().string());
+
+          JSONArray jsonArray = jmessage.getJSONObject("data").getJSONArray("translations");
+
+          String[] list = new String[4];
+          String[] allergens = new String[4];
+
+          for(int i = 0; i < 4; i++){
+            list[i] = jsonArray.getJSONObject(i).getString("translatedText");
+          }
+
+          for(int i = 4; i < 8; i++){
+            allergens[i - 4] = jsonArray.getJSONObject(i).getString("translatedText");
+          }
+
+//          System.out.println(Array.toString(list));
+
+          Utils.setTranslations(list);
+          Utils.setAllergens(allergens);
+
+        } catch (IOException e) {
+          e.printStackTrace();
+          message = "Could not connect to server";
+        } catch (JSONException e) {
+          e.printStackTrace();
+        }
+        return message;
+      }
+
+      @Override
+      protected void onPostExecute(String message) {
+        onUpdateFrame(null);
+      }
+    };
+
+    asyncTask.execute();
   }
 }
