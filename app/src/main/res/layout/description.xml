@@ -13,14 +13,12 @@
         android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="French Fries and bacon and cheddar burger"
         android:textAlignment="center" />
 
     <TextView
         android:id="@+id/calories"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="127 Calories"
         android:textAlignment="center"
         android:paddingTop="2dp" />
 
