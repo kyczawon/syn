@@ -42,20 +42,17 @@ public class Utils {
     }
 
     public static String[] descriptions = new String[]{
-            "Sushi set - special of the chief famous salmon sushi",
-            "French fries and bacon and Cheddar burger",
-            "pizza pepperoni",
-            "chief's special rice"
-    };
-
-    public static String[] allergens = new String[]{
-            "Fish, Sesame Seeds, Milk, Soybeans",
-            "Wheat, Soy, Egg, Milk",
-            "Milk, Gluten",
-            "No allergens"
+            "Ulcer present but no infection. Please visit your doctor as quickly as possible for treatment",
+            "1st degree burn present. Cool the burn with cool running water for at least 10 mins, and apply a thin layer of ointment. Cover the burn with a non-stick, sterile bandage.",
+            "2nd degree burn present. Cool the burn with cool running water for at least 15 mins - 30 mins. Seek medical advice for treatment."
     };
 
     public static String[] translations =  descriptions;
+
+    public static int[] colors =  new int[]{
+            Integer.parseInt("C52233", 16),
+            Integer.parseInt("7CC6FE", 16),
+    };
 
     public static void setTranslations(String[] translations) {
         Utils.translations = translations;
@@ -69,9 +66,5 @@ public class Utils {
 
     public static String stringEncode(String str) {
         return str.replaceAll("'", "&#39;");
-    }
-
-    public static void setAllergens(String[] allergens) {
-        Utils.allergens = allergens;
     }
 }

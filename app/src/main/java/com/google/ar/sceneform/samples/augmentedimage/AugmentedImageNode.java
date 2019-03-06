@@ -17,9 +17,11 @@
 package com.google.ar.sceneform.samples.augmentedimage;
 
 import android.content.Context;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import com.google.ar.core.AugmentedImage;
@@ -58,54 +60,19 @@ public class AugmentedImageNode extends AnchorNode {
   // Models of the 4 corners.  We use completable futures here to simplify
   // the error handling and asynchronous loading.  The loading is started with the
   // first construction of an instance, and then used when the image is set.
-  private static CompletableFuture<ModelRenderable> ulCorner;
-  private static CompletableFuture<ModelRenderable> urCorner;
-  private static CompletableFuture<ModelRenderable> lrCorner;
-  private static CompletableFuture<ModelRenderable> llCorner;
-  private static CompletableFuture<ModelRenderable> hamburger;
-  private static CompletableFuture<ModelRenderable> pizza;
-  private static CompletableFuture<ModelRenderable> rice;
-  private static CompletableFuture<ModelRenderable> sushi;
-  private static CompletableFuture<ModelRenderable> button;
   private static CompletableFuture<ViewRenderable> details;
-    private static CompletableFuture<ViewRenderable> allergens;
 
-  private Node currentFood;
+  private int index;
 
 
-  public AugmentedImageNode(Context context) {
+  public AugmentedImageNode(Context context, int index) {
     // Upon construction, start loading the models for the corners of the frame.
-    if (hamburger == null) {
-        hamburger =
-          ModelRenderable.builder()
-              .setSource(context, Uri.parse("models/hamburger.sfb"))
-              .build();
-      pizza =
-              ModelRenderable.builder()
-                      .setSource(context, Uri.parse("models/pizza.sfb"))
-                      .build();
-      rice =
-              ModelRenderable.builder()
-                      .setSource(context, Uri.parse("models/rice.sfb"))
-                      .build();
-      sushi =
-              ModelRenderable.builder()
-                      .setSource(context, Uri.parse("models/sushi.sfb"))
-                      .build();
-      button =
-              ModelRenderable.builder()
-                      .setSource(context, Uri.parse("models/button.sfb"))
-                      .build();
-
-      details =
+      this.index = index;
+    if (details == null) {
+        details =
               ViewRenderable.builder()
-                      .setView(context, R.layout.description)
+                      .setView(context, View.inflate(context, R.layout.description, null))
                       .build();
-
-      allergens =
-                ViewRenderable.builder()
-                        .setView(context, R.layout.allergens)
-                        .build();
 }
   }
 
@@ -120,8 +87,8 @@ public class AugmentedImageNode extends AnchorNode {
     this.image = image;
 
     // If any of the models are not loaded, then recurse when all are loaded.
-    if (!hamburger.isDone()) {
-      CompletableFuture.allOf(hamburger)
+    if (!details.isDone()) {
+      CompletableFuture.allOf(details)
           .thenAccept((Void aVoid) -> setImage(image))
           .exceptionally(
               throwable -> {
@@ -135,35 +102,6 @@ public class AugmentedImageNode extends AnchorNode {
 
     // Make the 4 corner nodes.
     Vector3 localPosition = new Vector3();
-
-    localPosition.set(0.0f,0.0f,-0.07f);
-    Node buttonNode = new Node();
-    buttonNode.setParent(this);
-    buttonNode.setLocalPosition(localPosition);
-    buttonNode.setRenderable(button.getNow(null));
-    buttonNode.setLocalScale(new Vector3(0.03f,0.07f,0.035f));
-
-    localPosition.set(0.0f,0.0f,-0.03f);
-    Node buttonNode2 = new Node();
-    buttonNode2.setParent(this);
-    buttonNode2.setLocalPosition(localPosition);
-    buttonNode2.setRenderable(button.getNow(null));
-    buttonNode2.setLocalScale(new Vector3(0.03f,0.07f,0.035f));
-
-    localPosition.set(0.0f,0.0f,0.01f);
-    Node buttonNode3 = new Node();
-    buttonNode3.setParent(this);
-    buttonNode3.setLocalPosition(localPosition);
-    buttonNode3.setRenderable(button.getNow(null));
-    buttonNode3.setLocalScale(new Vector3(0.03f,0.07f,0.035f));
-
-    localPosition.set(0.0f,0.0f,0.05f);
-    Node buttonNode4 = new Node();
-    buttonNode4.setParent(this);
-    buttonNode4.setLocalPosition(localPosition);
-    buttonNode4.setRenderable(button.getNow(null));
-    buttonNode4.setLocalScale(new Vector3(0.03f,0.07f,0.035f));
-
     localPosition.set(0.0f, 0.0f, -0.6f * image.getExtentZ());
     Node detailsNode = new Node();
     detailsNode.setParent(this);
@@ -171,96 +109,16 @@ public class AugmentedImageNode extends AnchorNode {
     detailsNode.setLocalScale(new Vector3(0.25f,0.25f,0.25f));
     detailsNode.setLocalRotation(new Quaternion( 0.383f,0,0, -0.924f));
 
-      localPosition.set(0.9f * image.getExtentX(), 0.0f, 0.0f);
-      Node allergensNode = new Node();
-      allergensNode.setParent(this);
-      allergensNode.setLocalPosition(localPosition);
-      allergensNode.setLocalScale(new Vector3(0.25f,0.25f,0.25f));
-      allergensNode.setLocalRotation(new Quaternion(  0.383f,0,0, -0.924f));
+    detailsNode.setRenderable(details.getNow(null));
 
-    //current food
-    localPosition.set(-1f * image.getExtentX(), 0.0f, 0);
-    currentFood = new Node();
-    currentFood.setParent(this);
-    currentFood.setLocalPosition(localPosition);
+    if (details.isDone()) {
+      TextView text = details.getNow(null).getView().findViewById(R.id.header);
+      text.setText(Utils.translations[index]);
 
+//      GradientDrawable myGrad = (GradientDrawable) text.getBackground();
+//      myGrad.setColor(Utils.colors[index]);
+    }
 
-    buttonNode.setOnTapListener((hitTestResult, motionEvent) -> {
-        currentFood.setLocalRotation(new Quaternion(0,1,0,1));
-        currentFood.setRenderable(sushi.getNow(null));
-        currentFood.setLocalScale(new Vector3(0.25f,0.25f,0.25f));
-
-        detailsNode.setRenderable(details.getNow(null));
-
-        TextView text = details.getNow(null).getView().findViewById(R.id.header);
-        text.setText(Utils.translations[0]);
-
-        TextView calories = details.getNow(null).getView().findViewById(R.id.calories);
-        calories.setText("256 Calories");
-
-        allergensNode.setRenderable(allergens.getNow(null));
-
-        TextView allergensTextView = allergens.getNow(null).getView().findViewById(R.id.allergens_header);
-        allergensTextView.setText(Utils.allergens[0]);
-    });
-
-    buttonNode2.setOnTapListener((hitTestResult, motionEvent) -> {
-        currentFood.setLocalRotation(new Quaternion(0, 0, 0, 0));
-        currentFood.setRenderable(hamburger.getNow(null));
-        currentFood.setLocalScale(new Vector3(0.070f, 0.070f, 0.070f));
-
-        detailsNode.setRenderable(details.getNow(null));
-
-        TextView text = details.getNow(null).getView().findViewById(R.id.header);
-        text.setText(Utils.translations[1]);
-
-        TextView calories = details.getNow(null).getView().findViewById(R.id.calories);
-        calories.setText("127 Calories");
-
-        allergensNode.setRenderable(allergens.getNow(null));
-
-        TextView allergensTextView = allergens.getNow(null).getView().findViewById(R.id.allergens_header);
-        allergensTextView.setText(Utils.allergens[1]);
-    });
-
-    buttonNode3.setOnTapListener((hitTestResult, motionEvent) -> {
-        currentFood.setLocalRotation(new Quaternion(0,0,0,0));
-        currentFood.setRenderable(pizza.getNow(null));
-        currentFood.setLocalScale(new Vector3(0.032f,0.032f,0.032f));
-
-        TextView text = details.getNow(null).getView().findViewById(R.id.header);
-        text.setText(Utils.translations[2]);
-
-        detailsNode.setRenderable(details.getNow(null));
-
-        TextView calories = details.getNow(null).getView().findViewById(R.id.calories);
-        calories.setText("347 Calories");
-
-        allergensNode.setRenderable(allergens.getNow(null));
-
-        TextView allergensTextView = allergens.getNow(null).getView().findViewById(R.id.allergens_header);
-        allergensTextView.setText(Utils.allergens[2]);
-    });
-
-    buttonNode4.setOnTapListener((hitTestResult, motionEvent) -> {
-        currentFood.setLocalRotation(new Quaternion(0,0,0,0));
-        currentFood.setRenderable(rice.getNow(null));
-        currentFood.setLocalScale(new Vector3(0.14f,0.14f,0.14f));
-
-        detailsNode.setRenderable(details.getNow(null));
-
-        TextView text = details.getNow(null).getView().findViewById(R.id.header);
-        text.setText(Utils.translations[3]);
-
-        TextView calories = details.getNow(null).getView().findViewById(R.id.calories);
-        calories.setText("123 Calories");
-
-        allergensNode.setRenderable(allergens.getNow(null));
-
-        TextView allergensTextView = allergens.getNow(null).getView().findViewById(R.id.allergens_header);
-        allergensTextView.setText(Utils.allergens[3]);
-
-    });
   }
 
   public AugmentedImage getImage() {

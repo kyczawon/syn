@@ -61,7 +61,7 @@ public class AugmentedImageActivity extends AppCompatActivity {
 
   // Augmented image and its associated center pose anchor, keyed by the augmented image in
   // the database.
-  private final Map<AugmentedImage, AugmentedImageNode> augmentedImageMap = new HashMap<>();
+  private Map<AugmentedImage, AugmentedImageNode> augmentedImageMap = new HashMap<>();
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -129,6 +129,11 @@ public class AugmentedImageActivity extends AppCompatActivity {
 
     Collection<AugmentedImage> updatedAugmentedImages =
         frame.getUpdatedTrackables(AugmentedImage.class);
+
+//    if (updatedAugmentedImages.isEmpty()) {
+//      fitToScanView.setVisibility(View.VISIBLE);
+//    }
+
     for (AugmentedImage augmentedImage : updatedAugmentedImages) {
       switch (augmentedImage.getTrackingState()) {
         case PAUSED:
@@ -140,7 +145,16 @@ public class AugmentedImageActivity extends AppCompatActivity {
 
           // Create a new anchor for newly found images.
           if (!augmentedImageMap.containsKey(augmentedImage)) {
-            AugmentedImageNode node = new AugmentedImageNode(this);
+
+
+            //remove previous nodes
+            for (AugmentedImageNode imageNode: augmentedImageMap.values()) {
+              arFragment.getArSceneView().getScene().removeChild(imageNode);
+            }
+            augmentedImageMap.clear();
+
+            //add current nodes
+            AugmentedImageNode node = new AugmentedImageNode(this, augmentedImage.getIndex());
             node.setImage(augmentedImage);
             augmentedImageMap.put(augmentedImage, node);
             arFragment.getArSceneView().getScene().addChild(node);
@@ -168,12 +182,6 @@ public class AugmentedImageActivity extends AppCompatActivity {
                 .url("https://translation.googleapis.com/language/translate/v2" +
                         "?q=" + Utils.descriptions[0] +
                         "&q=" + Utils.descriptions[1] +
-                        "&q=" + Utils.descriptions[2] +
-                        "&q=" + Utils.descriptions[3] +
-                        "&q=" + Utils.allergens[0] +
-                        "&q=" + Utils.allergens[1] +
-                        "&q=" + Utils.allergens[2] +
-                        "&q=" + Utils.allergens[3] +
                         "&target=" + Utils.targetLanguage +
                         "&key=" + "AIzaSyBAEGDww4VJ1UmJI2Du296txX3aPEpUO_g")
                 .build();
@@ -185,20 +193,14 @@ public class AugmentedImageActivity extends AppCompatActivity {
           JSONArray jsonArray = jmessage.getJSONObject("data").getJSONArray("translations");
 
           String[] list = new String[4];
-          String[] allergens = new String[4];
 
-          for(int i = 0; i < 4; i++){
+          for(int i = 0; i < Utils.descriptions.length; i++){
             list[i] = jsonArray.getJSONObject(i).getString("translatedText");
-          }
-
-          for(int i = 4; i < 8; i++){
-            allergens[i - 4] = jsonArray.getJSONObject(i).getString("translatedText");
           }
 
 //          System.out.println(Array.toString(list));
 
           Utils.setTranslations(list);
-          Utils.setAllergens(allergens);
 
         } catch (IOException e) {
           e.printStackTrace();
